@@ -1,0 +1,2705 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fertile Land - Game Berkebun 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* Kontrol Kamera */
+        #camera-control {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 70%;
+            height: 70%;
+            pointer-events: all;
+            z-index: 90;
+        }
+        
+        /* Crosshair di tengah layar */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+        
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 0;
+            top: 9px;
+        }
+        
+        /* Tombol Arah */
+        #movement-controls {
+            position: absolute;
+            left: 15px;
+            bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 5px;
+            pointer-events: all;
+            z-index: 100;
+        }
+        
+        .direction-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(106, 153, 78, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d5016;
+            backdrop-filter: blur(5px);
+            user-select: none;
+            pointer-events: all;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+        
+        .direction-btn:active {
+            background: rgba(167, 201, 87, 0.95);
+            transform: scale(0.92);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #btn-forward {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        #btn-backward {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        #btn-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        #btn-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        /* Panel Inventori Baru di Bawah */
+        #inventory-panel {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 6px 12px;
+            border-radius: 12px;
+            z-index: 100;
+            pointer-events: all;
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(106, 153, 78, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            gap: 15px;
+            min-width: 200px;
+            justify-content: center;
+        }
+        
+        .inventory-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .inventory-item:active {
+            background: rgba(167, 201, 87, 0.5);
+            transform: scale(0.95);
+        }
+        
+        .inventory-count {
+            font-size: 14px;
+            font-weight: bold;
+            color: #2d5016;
+        }
+        
+        .inventory-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #2d5016;
+        }
+        
+        /* Panel Bibit Baru di Bawah */
+        #seeds-panel {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 6px 12px;
+            border-radius: 12px;
+            z-index: 100;
+            pointer-events: all;
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(106, 153, 78, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            gap: 12px;
+            min-width: 180px;
+            justify-content: center;
+        }
+        
+        .seed-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .seed-item.selected {
+            background: rgba(167, 201, 87, 0.5);
+            border: 1px solid rgba(106, 153, 78, 0.7);
+        }
+        
+        .seed-item:active {
+            transform: scale(0.95);
+        }
+        
+        .seed-name {
+            font-size: 9px;
+            font-weight: 600;
+            color: #2d5016;
+        }
+        
+        .seed-count {
+            font-size: 12px;
+            font-weight: bold;
+            color: #2d5016;
+        }
+        
+        /* Tombol Aksi - Tata Letak Baru */
+        #action-buttons {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            pointer-events: all;
+            z-index: 100;
+            width: 160px;
+        }
+        
+        .action-btn {
+            width: 70px;
+            height: 50px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(106, 153, 78, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d5016;
+            backdrop-filter: blur(5px);
+            user-select: none;
+            pointer-events: all;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+        
+        .action-btn:active {
+            background: rgba(167, 201, 87, 0.95);
+            transform: scale(0.92);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .action-btn.active {
+            background: rgba(167, 201, 87, 0.95);
+            transform: scale(0.95);
+            box-shadow: 0 0 0 3px rgba(106, 153, 78, 0.5);
+        }
+        
+        /* Tombol loncat di tengah */
+        #btn-jump {
+            grid-column: 1 / span 2;
+            grid-row: 2;
+            justify-self: center;
+            width: 100px;
+        }
+        
+        /* Panel Statistik - Hanya Uang dan Diamond */
+        #stats-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px;
+            border-radius: 12px;
+            z-index: 100;
+            pointer-events: none;
+            font-size: 12px;
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(106, 153, 78, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .stat-label {
+            font-weight: 600;
+            color: #2d5016;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #2d5016;
+        }
+        
+        /* Tombol di bagian atas */
+        .top-buttons {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+            pointer-events: all;
+        }
+        
+        .top-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(106, 153, 78, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            backdrop-filter: blur(5px);
+            pointer-events: all;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+        
+        .top-btn:active {
+            background: rgba(167, 201, 87, 0.95);
+            transform: scale(0.92);
+        }
+        
+        #spin-button {
+            background: rgba(255, 215, 0, 0.85);
+            border: 2px solid rgba(184, 134, 11, 0.7);
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            text-align: center;
+            max-width: 80%;
+            z-index: 300;
+            font-weight: 500;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 1000;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #a7c957;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-weight: 700;
+        }
+        
+        #start-button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(to bottom, #6a994e, #5a8c49);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+            pointer-events: all;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        #start-button:hover {
+            background: linear-gradient(to bottom, #a7c957, #6a994e);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .instructions {
+            max-width: 90%;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: linear-gradient(to bottom, #f9f9f9, #e6e6e6);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            border: 3px solid #6a994e;
+        }
+        
+        .close-modal {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #6a994e;
+        }
+        
+        .shop-item, .spin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            border: 2px solid #a7c957;
+        }
+        
+        .shop-item button, .spin-item button {
+            background: linear-gradient(to bottom, #6a994e, #5a8c49);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .shop-item button:disabled, .spin-item button:disabled {
+            background: linear-gradient(to bottom, #cccccc, #aaaaaa);
+            cursor: not-allowed;
+        }
+        
+        .shop-item button:hover:not(:disabled), .spin-item button:hover:not(:disabled) {
+            background: linear-gradient(to bottom, #a7c957, #6a994e);
+        }
+        
+        .spin-container {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .spin-wheel {
+            width: 150px;
+            height: 150px;
+            margin: 15px auto;
+            border-radius: 50%;
+            background: conic-gradient(
+                #ff6b6b 0% 20%, 
+                #4ecdc4 20% 40%, 
+                #45b7d1 40% 60%, 
+                #f9c74f 60% 80%, 
+                #90be6d 80% 100%
+            );
+            position: relative;
+            transition: transform 3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            transform: rotate(0deg);
+        }
+        
+        .spin-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 15px solid #2d5016;
+            z-index: 10;
+        }
+        
+        /* Map border indicator */
+        #map-border-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 250;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        /* Error message */
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 2000;
+            display: none;
+        }
+        
+        /* Responsivitas untuk perangkat berbeda */
+        @media (max-width: 768px) {
+            .direction-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 16px;
+            }
+            
+            .action-btn {
+                width: 65px;
+                height: 45px;
+                font-size: 12px;
+            }
+            
+            #btn-jump {
+                width: 90px;
+            }
+            
+            #inventory-panel {
+                bottom: 70px;
+                padding: 5px 10px;
+                min-width: 180px;
+                gap: 10px;
+            }
+            
+            #seeds-panel {
+                bottom: 120px;
+                padding: 5px 10px;
+                min-width: 160px;
+                gap: 10px;
+            }
+            
+            .inventory-count {
+                font-size: 12px;
+            }
+            
+            .inventory-label {
+                font-size: 9px;
+            }
+            
+            .seed-name {
+                font-size: 8px;
+            }
+            
+            .seed-count {
+                font-size: 11px;
+            }
+            
+            #stats-panel {
+                top: 10px;
+                left: 10px;
+                padding: 8px;
+                font-size: 11px;
+                min-width: 90px;
+            }
+            
+            .top-buttons {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .top-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .direction-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 14px;
+            }
+            
+            #movement-controls {
+                left: 10px;
+                bottom: 10px;
+                grid-template-columns: repeat(3, 40px);
+                grid-template-rows: repeat(3, 40px);
+            }
+            
+            .action-btn {
+                width: 60px;
+                height: 40px;
+                font-size: 11px;
+            }
+            
+            #action-buttons {
+                right: 10px;
+                bottom: 10px;
+                width: 140px;
+                gap: 6px;
+            }
+            
+            #btn-jump {
+                width: 80px;
+            }
+            
+            #inventory-panel {
+                bottom: 1px;
+                padding: 4px 8px;
+                min-width: 160px;
+                gap: 8px;
+            }
+            
+            #seeds-panel {
+                bottom: 100px;
+                padding: 4px 8px;
+                min-width: 140px;
+                gap: 8px;
+            }
+            
+            .inventory-count {
+                font-size: 8px;
+            }
+            
+            .inventory-label {
+                font-size: 8px;
+            }
+            
+            .seed-name {
+                font-size: 7px;
+            }
+            
+            .seed-count {
+                font-size: 10px;
+            }
+            
+            #stats-panel {
+                min-width: 80px;
+                padding: 6px;
+                font-size: 10px;
+            }
+            
+            .top-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            #inventory-panel {
+                bottom: 60px;
+            }
+            
+            #seeds-panel {
+                bottom: 100px;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            #inventory-panel {
+                bottom: 50px;
+            }
+            
+            #seeds-panel {
+                bottom: 80px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <div id="canvas-container"></div>
+        
+        <div id="ui-overlay">
+            <!-- Crosshair di tengah layar -->
+            <div id="crosshair"></div>
+            
+            <!-- Area Kontrol Kamera -->
+            <div id="camera-control"></div>
+            
+            <!-- Kontrol Arah -->
+            <div id="movement-controls">
+                <div class="direction-btn" id="btn-forward">↑</div>
+                <div class="direction-btn" id="btn-backward">↓</div>
+                <div class="direction-btn" id="btn-left">←</div>
+                <div class="direction-btn" id="btn-right">→</div>
+            </div>
+            
+            <!-- Panel Inventori Baru di Bawah -->
+            <div id="inventory-panel">
+                <div class="inventory-item" data-item="wheat">
+                    <div class="inventory-label">GANDUM</div>
+                    <div class="inventory-count" id="inventory-wheat">0</div>
+                </div>
+                <div class="inventory-item" data-item="corn">
+                    <div class="inventory-label">JAGUNG</div>
+                    <div class="inventory-count" id="inventory-corn">0</div>
+                </div>
+                <div class="inventory-item" data-item="carrot">
+                    <div class="inventory-label">WORTEL</div>
+                    <div class="inventory-count" id="inventory-carrot">0</div>
+                </div>
+            </div>
+            
+            <!-- Panel Bibit Baru di Bawah -->
+            <div id="seeds-panel">
+                <div class="seed-item selected" data-plant="wheat">
+                    <div class="seed-name">GANDUM</div>
+                    <div class="seed-count" id="seed-wheat">5</div>
+                </div>
+                <div class="seed-item" data-plant="corn">
+                    <div class="seed-name">JAGUNG</div>
+                    <div class="seed-count" id="seed-corn">5</div>
+                </div>
+                <div class="seed-item" data-plant="carrot">
+                    <div class="seed-name">WORTEL</div>
+                    <div class="seed-count" id="seed-carrot">5</div>
+                </div>
+            </div>
+            
+            <!-- Panel Statistik - Hanya Uang dan Diamond -->
+            <div id="stats-panel">
+                <div class="stat-item">
+                    <div class="stat-label">Uang:</div>
+                    <div class="stat-value" id="money">100</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Diamond:</div>
+                    <div class="stat-value" id="diamonds">5</div>
+                </div>
+            </div>
+            
+            <!-- Tombol Aksi - Tata Letak Baru -->
+            <div id="action-buttons">
+                <div class="action-btn" id="btn-water">Siram</div>
+                <div class="action-btn" id="btn-plant">Tanam</div>
+                <div class="action-btn" id="btn-jump">Loncat</div>
+                <div class="action-btn" id="btn-harvest">Panen</div>
+                <div class="action-btn" id="btn-locate">Cari</div>
+            </div>
+            
+            <!-- Tombol di bagian atas -->
+            <div class="top-buttons">
+                <div class="top-btn" id="camera-toggle">👁️</div>
+                <div class="top-btn" id="shop-button">🛒</div>
+                <div class="top-btn" id="spin-button">🎰</div>
+            </div>
+            
+            <div id="message"></div>
+            <div id="map-border-warning">Anda telah mencapai batas peternakan</div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>Fertile Land</h1>
+            <div class="instructions">
+                <p>Selamat datang di game berkebun 3D! Kelola pertanian Anda dengan kontrol sentuh.</p>
+                <p>Gunakan tombol arah untuk bergerak, swipe kanan layar untuk melihat sekeliling, dan tombol aksi untuk berinteraksi.</p>
+                <p>Tanam benih, sirami tanaman, dan panen hasilnya!</p>
+            </div>
+            <button id="start-button">Mulai Bermain</button>
+        </div>
+
+        <!-- Pesan error -->
+        <div id="error-message">
+            <h2>Terjadi Masalah</h2>
+            <p id="error-details">Browser Anda tidak mendukung WebGL atau Three.js gagal dimuat.</p>
+            <p>Pastikan Anda menggunakan browser modern seperti Chrome, Firefox, atau Edge.</p>
+            <button id="retry-button" style="margin-top: 15px; padding: 10px 20px; background: #6a994e; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Coba Lagi
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Toko -->
+    <div id="shop-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-shop">&times;</span>
+            <h2>Toko Pertanian</h2>
+            
+            <div class="shop-tabs">
+                <button class="tab-btn active" data-tab="buy">Beli Benih</button>
+                <button class="tab-btn" data-tab="sell">Jual Hasil</button>
+            </div>
+            
+            <div class="tab-content" id="buy-tab">
+                <div class="shop-item">
+                    <div>
+                        <h3>Benih Gandum</h3>
+                        <p>Harga: 10 uang</p>
+                    </div>
+                    <button id="buy-wheat-seeds">Beli</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <h3>Benih Jagung</h3>
+                        <p>Harga: 15 uang</p>
+                    </div>
+                    <button id="buy-corn-seeds">Beli</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <h3>Benih Wortel</h3>
+                        <p>Harga: 20 uang</p>
+                    </div>
+                    <button id="buy-carrot-seeds">Beli</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <h3>Paket Diamond</h3>
+                        <p>Harga: 100 uang</p>
+                    </div>
+                    <button id="buy-diamonds">Beli</button>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="sell-tab" style="display: none;">
+                <div class="shop-item">
+                    <div>
+                        <h3>Jual Gandum</h3>
+                        <p>Harga: 5 uang per item</p>
+                    </div>
+                    <button id="sell-wheat">Jual</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <h3>Jual Jagung</h3>
+                        <p>Harga: 8 uang per item</p>
+                    </div>
+                    <button id="sell-corn">Jual</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <h3>Jual Wortel</h3>
+                        <p>Harga: 12 uang per item</p>
+                    </div>
+                    <button id="sell-carrot">Jual</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Spin -->
+    <div id="spin-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-spin">&times;</span>
+            <h2>Spin untuk Hadiah!</h2>
+            <p>Dapatkan item langka dengan memutar roda keberuntungan.</p>
+            <p>Biaya: 1 Diamond per spin</p>
+            
+            <div class="spin-container">
+                <div class="spin-wheel" id="spin-wheel">
+                    <div class="spin-pointer"></div>
+                </div>
+                <button id="do-spin" style="padding: 10px 20px; font-size: 14px; margin-top: 15px;">Putar Roda (1 Diamond)</button>
+            </div>
+            
+            <div id="spin-result" style="text-align: center; margin-top: 15px; font-weight: bold;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Variabel utama game
+        let scene, camera, renderer;
+        let farmlands = [];
+        let activeTool = 'none';
+        let selectedPlant = 'wheat';
+        let clock = new THREE.Clock();
+        
+        // Variabel kontrol
+        let moveForward = false;
+        let moveBackward = false;
+        let moveLeft = false;
+        let moveRight = false;
+        let isRunning = false;
+        
+        // Variabel untuk kontrol sentuh
+        let cameraSensitivity = 1.0;
+        let playerVelocity = new THREE.Vector3();
+        
+        // Variabel untuk kontrol kamera
+        let cameraAngleX = 0;
+        let cameraAngleY = 0;
+        
+        // Variabel untuk deteksi tabrakan
+        let colliders = [];
+        let playerCollider = {
+            position: new THREE.Vector3(0, 1.0, 0),
+            radius: 0.3,
+            height: 1.8
+        };
+        
+        // Variabel untuk tanaman
+        let plants = [];
+        let clouds = [];
+        
+        // Sumber daya pemain
+        let resources = {
+            money: 100,
+            diamonds: 5,
+            wheatSeeds: 5,
+            cornSeeds: 5,
+            carrotSeeds: 5,
+            wheat: 0,
+            corn: 0,
+            carrot: 0
+        };
+        
+        // Model tangan untuk first-person view
+        let handModel;
+        let playerModel;
+        let tpsCameraOffset = new THREE.Vector3(0, 1.5, 5);
+        let cameraMode = 'fps'; // 'fps' or 'tps'
+        
+        // Ukuran map yang lebih besar
+        const MAP_SIZE = 100;
+        const MAP_BORDER = 45;
+        
+        // Variabel untuk sound effects
+        let soundEffects = {};
+        let volume = 0.5;
+        let lastStepTime = 0;
+        let stepInterval = 500; // milliseconds between steps
+        
+        // Waktu pertumbuhan tanaman (5 menit dalam detik)
+        const GROWTH_TIME = 300; // 5 menit = 300 detik
+        // Waktu sebelum tanaman mati jika tidak disiram (3 menit dalam detik)
+        const THIRST_TIME = 180; // 3 menit = 180 detik
+
+        // Inisialisasi game
+        function init() {
+            try {
+                // Periksa dukungan WebGL
+                if (!isWebGLAvailable()) {
+                    showError("Browser Anda tidak mendukung WebGL. Silakan gunakan browser modern seperti Chrome, Firefox, atau Edge.");
+                    return;
+                }
+
+                // Periksa apakah Three.js sudah dimuat
+                if (typeof THREE === 'undefined') {
+                    showError("Three.js gagal dimuat. Pastikan Anda terhubung ke internet.");
+                    return;
+                }
+                
+                // Inisialisasi sound effects
+                initSounds();
+                
+                // Membuat scene
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x87CEEB);
+                scene.fog = new THREE.Fog(0x87CEEB, 30, 70);
+                
+                // Membuat kamera
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 1.6, 5); // Posisi kamera lebih rendah
+                
+                // Membuat renderer
+                renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    // Pastikan WebGL 1.0 digunakan untuk kompatibilitas yang lebih baik
+                    powerPreference: "high-performance",
+                    failIfMajorPerformanceCaveat: false
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+                
+                // Menambahkan pencahayaan
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 10);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 100;
+                directionalLight.shadow.camera.left = -30;
+                directionalLight.shadow.camera.right = 30;
+                directionalLight.shadow.camera.top = 30;
+                directionalLight.shadow.camera.bottom = -30;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.bias = -0.001;
+                scene.add(directionalLight);
+                
+                // Membuat matahari
+                createSun();
+                
+                // Membuat dunia game
+                createWorld();
+                
+                // Membuat model tangan
+                createHandModel();
+                
+                // Membuat model pemain untuk TPS
+                createPlayerModel();
+                
+                // Setup kontrol sentuh
+                setupTouchControls();
+                
+                // Menangani perubahan ukuran jendela
+                window.addEventListener('resize', onWindowResize);
+                
+                // Setup event listener UI
+                setupUI();
+                
+                // Update stats panel
+                updateStatsPanel();
+                
+                // Setup modal toko dan spin
+                setupModals();
+                
+                // Memulai loop animasi
+                animate();
+                
+                console.log("Game initialized successfully");
+            } catch (error) {
+                console.error("Error initializing game:", error);
+                showError("Error: " + error.message);
+            }
+        }
+
+        // Fungsi untuk memeriksa ketersediaan WebGL
+        function isWebGLAvailable() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(
+                    window.WebGLRenderingContext &&
+                    (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+                );
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Fungsi untuk menampilkan pesan error
+        function showError(message) {
+            const errorMessage = document.getElementById('error-message');
+            const errorDetails = document.getElementById('error-details');
+            
+            errorDetails.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            // Sembunyikan layar mulai
+            document.getElementById('start-screen').style.display = 'none';
+        }
+        
+        function initSounds() {
+            // Inisialisasi Web Audio API
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) {
+                console.warn("Web Audio API tidak didukung");
+                return;
+            }
+            
+            const ctx = new AudioCtx();
+            
+            // Master gain untuk kontrol volume
+            const masterGain = ctx.createGain();
+            masterGain.connect(ctx.destination);
+            masterGain.gain.value = volume;
+            
+            // Simpan context dan masterGain
+            soundEffects.ctx = ctx;
+            soundEffects.masterGain = masterGain;
+            
+            // Preload sound effects
+            soundEffects.sounds = {
+                click: createSound(523.25, 0.1),  // C5
+                plant: createSound(391.995, 0.2), // G4
+                water: createSound(329.628, 0.2), // E4
+                harvest: createSound(659.255, 0.3), // E5
+                coin: createSound(783.991, 0.2),  // G5
+                walk: createSound(196.00, 0.1),   // G3
+                run: createSound(261.626, 0.15),  // C4
+                error: createSound(233.082, 0.3), // Bb3
+                spin: createSound(1046.50, 0.5),  // C6
+                win: createSound(1567.98, 0.4)    // G6
+            };
+        }
+        
+        function createSound(frequency, duration) {
+            return function() {
+                if (!soundEffects.ctx) return;
+                
+                const ctx = soundEffects.ctx;
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(soundEffects.masterGain);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                gainNode.gain.setValueAtTime(0.3 * volume, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + duration);
+            };
+        }
+        
+        function setVolume(value) {
+            volume = value;
+            if (soundEffects.masterGain) {
+                soundEffects.masterGain.gain.value = value;
+            }
+        }
+        
+        function playSound(soundName) {
+            if (soundEffects.sounds && soundEffects.sounds[soundName]) {
+                soundEffects.sounds[soundName]();
+            }
+        }
+        
+        function createSun() {
+            // Membuat matahari sebagai objek visual
+            const sunGeometry = new THREE.SphereGeometry(3, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffd700,
+                emissive: 0xffcc00,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            sun.position.set(30, 30, 30);
+            scene.add(sun);
+        }
+        
+        function createWorld() {
+            // Membuat tanah berumput yang lebih besar
+            const groundGeometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x5a8c49,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Menambahkan collider untuk tanah
+            ground.userData = { 
+                type: 'ground',
+                collider: {
+                    type: 'plane',
+                    normal: new THREE.Vector3(0, 1, 0),
+                    constant: 0
+                }
+            };
+            colliders.push(ground.userData.collider);
+            
+            // Membuat pagar sebagai batas map
+            createFence();
+            
+            // Membuat plot pertanian
+            createFarmPlots();
+            
+            // Menambahkan rumput 3D yang lebih realistis
+            createRealisticGrass();
+            
+            // Menambahkan elemen dekoratif (pohon, batu, dll.)
+            addDecorations();
+            
+            // Menambahkan awan
+            createClouds();
+            
+            // Menambahkan langit
+            createSky();
+        }
+        
+        function createFence() {
+            // Membuat pagar sebagai batas map
+            const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const fencePostGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 8);
+            const fenceRailGeometry = new THREE.BoxGeometry(1, 0.1, 0.1);
+            
+            // Membuat pagar di sekeliling map
+            const fenceSpacing = 5;
+            const fenceCount = MAP_SIZE / fenceSpacing;
+            
+            for (let i = 0; i < fenceCount; i++) {
+                // Pagar sisi utara
+                const postNorth = new THREE.Mesh(fencePostGeometry, fenceMaterial);
+                postNorth.position.set(-MAP_SIZE/2 + i * fenceSpacing, 0.75, -MAP_SIZE/2);
+                postNorth.castShadow = true;
+                scene.add(postNorth);
+                
+                // Pagar sisi selatan
+                const postSouth = new THREE.Mesh(fencePostGeometry, fenceMaterial);
+                postSouth.position.set(-MAP_SIZE/2 + i * fenceSpacing, 0.75, MAP_SIZE/2);
+                postSouth.castShadow = true;
+                scene.add(postSouth);
+                
+                // Pagar sisi barat
+                const postWest = new THREE.Mesh(fencePostGeometry, fenceMaterial);
+                postWest.position.set(-MAP_SIZE/2, 0.75, -MAP_SIZE/2 + i * fenceSpacing);
+                postWest.castShadow = true;
+                scene.add(postWest);
+                
+                // Pagar sisi timur
+                const postEast = new THREE.Mesh(fencePostGeometry, fenceMaterial);
+                postEast.position.set(MAP_SIZE/2, 0.75, -MAP_SIZE/2 + i * fenceSpacing);
+                postEast.castShadow = true;
+                scene.add(postEast);
+                
+                // Tambahkan rel horizontal jika ini bukan post terakhir
+                if (i < fenceCount - 1) {
+                    // Rel utara
+                    const railNorth = new THREE.Mesh(fenceRailGeometry, fenceMaterial);
+                    railNorth.position.set(-MAP_SIZE/2 + i * fenceSpacing + fenceSpacing/2, 0.5, -MAP_SIZE/2);
+                    railNorth.castShadow = true;
+                    scene.add(railNorth);
+                    
+                    // Rel selatan
+                    const railSouth = new THREE.Mesh(fenceRailGeometry, fenceMaterial);
+                    railSouth.position.set(-MAP_SIZE/2 + i * fenceSpacing + fenceSpacing/2, 0.5, MAP_SIZE/2);
+                    railSouth.castShadow = true;
+                    scene.add(railSouth);
+                    
+                    // Rel barat
+                    const railWest = new THREE.Mesh(fenceRailGeometry, fenceMaterial);
+                    railWest.rotation.y = Math.PI / 2;
+                    railWest.position.set(-MAP_SIZE/2, 0.5, -MAP_SIZE/2 + i * fenceSpacing + fenceSpacing/2);
+                    railWest.castShadow = true;
+                    scene.add(railWest);
+                    
+                    // Rel timur
+                    const railEast = new THREE.Mesh(fenceRailGeometry, fenceMaterial);
+                    railEast.rotation.y = Math.PI / 2;
+                    railEast.position.set(MAP_SIZE/2, 0.5, -MAP_SIZE/2 + i * fenceSpacing + fenceSpacing/2);
+                    railEast.castShadow = true;
+                    scene.add(railEast);
+                }
+            }
+            
+            // Tambahkan collider untuk pagar
+            for (let x = -MAP_SIZE/2; x <= MAP_SIZE/2; x += MAP_SIZE) {
+                for (let z = -MAP_SIZE/2; z <= MAP_SIZE/2; z += 0.5) {
+                    colliders.push({
+                        type: 'box',
+                        min: new THREE.Vector3(x - 0.5, 0, z - 0.5),
+                        max: new THREE.Vector3(x + 0.5, 2, z + 0.5)
+                    });
+                }
+            }
+            
+            for (let z = -MAP_SIZE/2; z <= MAP_SIZE/2; z += MAP_SIZE) {
+                for (let x = -MAP_SIZE/2; x <= MAP_SIZE/2; x += 0.5) {
+                    colliders.push({
+                        type: 'box',
+                        min: new THREE.Vector3(x - 0.5, 0, z - 0.5),
+                        max: new THREE.Vector3(x + 0.5, 2, z + 0.5)
+                    });
+                }
+            }
+        }
+        
+        function createRealisticGrass() {
+            // Membuat rumput 3D yang lebih realistis dengan instancing
+            const grassCount = 300; // Lebih banyak rumput untuk map yang lebih besar
+            const grassMaterial = new THREE.MeshStandardMaterial({
+                color: 0x5a8c49,
+                transparent: true,
+                alphaTest: 0.5,
+                side: THREE.DoubleSide
+            });
+            
+            // Membuat beberapa variasi bentuk rumput
+            const grassShapes = [
+                createGrassBladeGeometry(0.5, 0.05),
+                createGrassBladeGeometry(0.4, 0.04),
+                createGrassBladeGeometry(0.6, 0.06)
+            ];
+            
+            for (let i = 0; i < grassCount; i++) {
+                const shapeIndex = Math.floor(Math.random() * grassShapes.length);
+                const grassGeometry = grassShapes[shapeIndex];
+                const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+                
+                // Posisi acak di atas tanah
+                const x = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                const z = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                grass.position.set(x, 0.25, z);
+                
+                // Rotasi acak
+                grass.rotation.y = Math.random() * Math.PI;
+                grass.rotation.x = (Math.random() - 0.5) * 0.2; // Sedikit miring
+                
+                // Skala sedikit acak untuk variasi
+                const scale = 0.8 + Math.random() * 0.4;
+                grass.scale.set(scale, scale, scale);
+                
+                grass.receiveShadow = true;
+                scene.add(grass);
+            }
+            
+            // Tambahkan beberapa rumput kecil (clumps)
+            for (let i = 0; i < 80; i++) {
+                const clump = new THREE.Group();
+                const clumpSize = 3 + Math.floor(Math.random() * 3);
+                
+                for (let j = 0; j < clumpSize; j++) {
+                    const shapeIndex = Math.floor(Math.random() * grassShapes.length);
+                    const grassGeometry = grassShapes[shapeIndex];
+                    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+                    
+                    // Posisi dalam kelompok
+                    const x = (Math.random() - 0.5) * 0.3;
+                    const z = (Math.random() - 0.5) * 0.3;
+                    grass.position.set(x, 0.1, z);
+                    
+                    // Rotasi acak
+                    grass.rotation.y = Math.random() * Math.PI;
+                    
+                    // Skala sedikit acak untuk variasi
+                    const scale = 0.7 + Math.random() * 0.3;
+                    grass.scale.set(scale, scale, scale);
+                    
+                    grass.receiveShadow = true;
+                    clump.add(grass);
+                }
+                
+                // Posisi kelompok rumput
+                const x = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                const z = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                clump.position.set(x, 0.25, z);
+                
+                scene.add(clump);
+            }
+        }
+        
+        function createGrassBladeGeometry(height, width) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                0, 0, 0,
+                -width/2, height, 0,
+                width/2, height, 0
+            ]);
+            
+            const uvs = new Float32Array([
+                0.5, 0,
+                0, 1,
+                1, 1
+            ]);
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+            geometry.computeVertexNormals();
+            
+            return geometry;
+        }
+        
+        function createFarmPlots() {
+            const plotGeometry = new THREE.PlaneGeometry(1, 1);
+            
+            // Material untuk tanah yang sudah siap tanam
+            const plotMaterialReady = new THREE.MeshStandardMaterial({ 
+                color: 0x795548,
+                roughness: 0.9
+            });
+            
+            // Membuat plot pertanian di area tengah map
+            for (let i = -3; i <= 3; i++) {
+                for (let j = -3; j <= 3; j++) {
+                    const plot = new THREE.Mesh(plotGeometry, plotMaterialReady);
+                    plot.rotation.x = -Math.PI / 2;
+                    plot.position.set(i * 2, 0.05, j * 2); // Sedikit di atas tanah
+                    plot.receiveShadow = true;
+                    plot.userData = {
+                        type: 'farmland',
+                        state: 'ready', // ready, planted, growing, grown, dead
+                        plantType: null,
+                        growth: 0,
+                        waterLevel: 100, // Tanah memiliki kelembaban awal
+                        maxWaterLevel: 100,
+                        plantModel: null,
+                        lastUpdate: Date.now(),
+                        lastWatered: Date.now() // Waktu terakhir disiram
+                    };
+                    
+                    // Tambahkan collider untuk plot
+                    plot.userData.collider = {
+                        type: 'box',
+                        min: new THREE.Vector3(plot.position.x - 0.5, plot.position.y, plot.position.z - 0.5),
+                        max: new THREE.Vector3(plot.position.x + 0.5, plot.position.y + 0.1, plot.position.z + 0.5)
+                    };
+                    
+                    scene.add(plot);
+                    farmlands.push(plot);
+                    colliders.push(plot.userData.collider);
+                }
+            }
+        }
+        
+        function createPlantModel(type, growthStage) {
+            const plantGroup = new THREE.Group();
+            
+            if (growthStage === 'seedling') {
+                // Model bibit kecil
+                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8);
+                const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00 });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.y = 0.1;
+                plantGroup.add(stem);
+                
+                // Daun kecil
+                const leafGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const leafMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32 });
+                
+                const leaf1 = new THREE.Mesh(leafGeometry, leafMaterial);
+                leaf1.position.set(0.1, 0.2, 0);
+                plantGroup.add(leaf1);
+                
+                const leaf2 = new THREE.Mesh(leafGeometry, leafMaterial);
+                leaf2.position.set(-0.1, 0.2, 0);
+                plantGroup.add(leaf2);
+                
+            } else if (growthStage === 'growing') {
+                // Model tanaman sedang tumbuh
+                const stemGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 8);
+                const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x556B2F });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.y = 0.25;
+                plantGroup.add(stem);
+                
+                // Daun lebih banyak
+                const leafGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const leafMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+                
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2;
+                    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                    leaf.position.set(
+                        Math.cos(angle) * 0.15,
+                        0.4 + Math.random() * 0.1,
+                        Math.sin(angle) * 0.15
+                    );
+                    plantGroup.add(leaf);
+                }
+                
+            } else if (growthStage === 'grown') {
+                // Model tanaman dewasa sesuai jenis
+                if (type === 'wheat') {
+                    // Tanaman gandum
+                    const stemGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 8);
+                    const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    stem.position.y = 0.4;
+                    plantGroup.add(stem);
+                    
+                    // Bulir gandum
+                    const wheatGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+                    const wheatMaterial = new THREE.MeshBasicMaterial({ color: 0xDAA520 });
+                    
+                    for (let i = 0; i < 3; i++) {
+                        const wheat = new THREE.Mesh(wheatGeometry, wheatMaterial);
+                        wheat.position.set(
+                            (Math.random() - 0.5) * 0.2,
+                            0.8 + Math.random() * 0.1,
+                            (Math.random() - 0.5) * 0.2
+                        );
+                        plantGroup.add(wheat);
+                    }
+                    
+                } else if (type === 'corn') {
+                    // Tanaman jagung
+                    const stemGeometry = new THREE.CylinderGeometry(0.12, 0.15, 1.2, 8);
+                    const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    stem.position.y = 0.6;
+                    plantGroup.add(stem);
+                    
+                    // Jagung
+                    const cornGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.3, 8);
+                    const cornMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+                    const corn = new THREE.Mesh(cornGeometry, cornMaterial);
+                    corn.position.set(0, 1.1, 0);
+                    corn.rotation.x = Math.PI / 2;
+                    plantGroup.add(corn);
+                    
+                } else if (type === 'carrot') {
+                    // Tanaman wortel
+                    const stemGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.4, 8);
+                    const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32 });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    stem.position.y = 0.2;
+                    plantGroup.add(stem);
+                    
+                    // Daun wortel
+                    const leafGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                    const leafMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32 });
+                    
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                        leaf.position.set(
+                            Math.cos(angle) * 0.1,
+                            0.4 + Math.random() * 0.1,
+                            Math.sin(angle) * 0.1
+                        );
+                        plantGroup.add(leaf);
+                    }
+                }
+            } else if (growthStage === 'dead') {
+                // Model tanaman mati
+                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8);
+                const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.y = 0.15;
+                stem.rotation.z = (Math.random() - 0.5) * 0.5;
+                plantGroup.add(stem);
+                
+                // Daun kering
+                const leafGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+                const leafMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+                
+                for (let i = 0; i < 3; i++) {
+                    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                    leaf.position.set(
+                        (Math.random() - 0.5) * 0.1,
+                        0.3 + Math.random() * 0.1,
+                        (Math.random() - 0.5) * 0.1
+                    );
+                    plantGroup.add(leaf);
+                }
+            }
+            
+            return plantGroup;
+        }
+        
+        function updatePlantGrowth(plot, deltaTime) {
+            if (plot.userData.state === 'planted' || plot.userData.state === 'growing') {
+                // Kurangi air seiring waktu
+                plot.userData.waterLevel = Math.max(0, plot.userData.waterLevel - deltaTime * 2);
+                
+                // Periksa apakah tanaman sudah tidak disiram selama 3 menit (180 detik)
+                const currentTime = Date.now();
+                const timeSinceLastWatered = (currentTime - plot.userData.lastWatered) / 1000; // dalam detik
+                
+                // Jika kekurangan air lebih dari 3 menit, tanaman bisa mati
+                if (timeSinceLastWatered > THIRST_TIME && Math.random() < 0.02 * deltaTime) {
+                    plot.userData.state = 'dead';
+                    if (plot.userData.plantModel) {
+                        scene.remove(plot.userData.plantModel);
+                    }
+                    plot.userData.plantModel = createPlantModel(plot.userData.plantType, 'dead');
+                    plot.userData.plantModel.position.copy(plot.position);
+                    scene.add(plot.userData.plantModel);
+                    showMessage("Tanaman mati karena kekurangan air!");
+                    return;
+                }
+                
+                // Tambah pertumbuhan jika ada air
+                if (plot.userData.waterLevel > 0) {
+                    plot.userData.growth += deltaTime / GROWTH_TIME;
+                    
+                    // Update visual tanaman berdasarkan tahap pertumbuhan
+                    if (plot.userData.growth < 0.3 && plot.userData.state !== 'planted') {
+                        plot.userData.state = 'planted';
+                        if (plot.userData.plantModel) {
+                            scene.remove(plot.userData.plantModel);
+                        }
+                        plot.userData.plantModel = createPlantModel(plot.userData.plantType, 'seedling');
+                        plot.userData.plantModel.position.copy(plot.position);
+                        scene.add(plot.userData.plantModel);
+                    } else if (plot.userData.growth >= 0.3 && plot.userData.growth < 0.8 && plot.userData.state !== 'growing') {
+                        plot.userData.state = 'growing';
+                        if (plot.userData.plantModel) {
+                            scene.remove(plot.userData.plantModel);
+                        }
+                        plot.userData.plantModel = createPlantModel(plot.userData.plantType, 'growing');
+                        plot.userData.plantModel.position.copy(plot.position);
+                        scene.add(plot.userData.plantModel);
+                    } else if (plot.userData.growth >= 1.0 && plot.userData.state !== 'grown') {
+                        plot.userData.state = 'grown';
+                        if (plot.userData.plantModel) {
+                            scene.remove(plot.userData.plantModel);
+                        }
+                        plot.userData.plantModel = createPlantModel(plot.userData.plantType, 'grown');
+                        plot.userData.plantModel.position.copy(plot.position);
+                        scene.add(plot.userData.plantModel);
+                        showMessage("Tanaman siap dipanen!");
+                    }
+                }
+            }
+        }
+        
+        function createHandModel() {
+            // Membuat model tangan sederhana untuk first-person view
+            const handGeometry = new THREE.BoxGeometry(0.15, 0.4, 0.15);
+            const handMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa66 });
+            
+            handModel = new THREE.Mesh(handGeometry, handMaterial);
+            handModel.position.set(0.3, -0.3, -0.5);
+            camera.add(handModel);
+        }
+        
+        function createPlayerModel() {
+            // Membuat model pemain sederhana untuk third-person view
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 8);
+            const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x3366cc });
+            
+            const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+            const headMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa66 });
+            
+            // Menambahkan kaki
+            const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
+            const legMaterial = new THREE.MeshBasicMaterial({ color: 0x3366cc });
+            
+            playerModel = new THREE.Group();
+            
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.5;
+            
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.25;
+            
+            // Kaki kiri
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.15, 0.35, 0);
+            
+            // Kaki kanan
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.15, 0.35, 0);
+            
+            playerModel.add(body);
+            playerModel.add(head);
+            playerModel.add(leftLeg);
+            playerModel.add(rightLeg);
+            
+            // Posisi karakter di atas tanah
+            playerModel.position.y = 1.0;
+            playerModel.visible = false; // Tidak terlihat di mode FPS
+            scene.add(playerModel);
+        }
+        
+        function createClouds() {
+            // Membuat beberapa awan untuk langit
+            const cloudMaterial = new THREE.MeshLambertMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            for (let i = 0; i < 8; i++) {
+                const cloud = new THREE.Group();
+                
+                // Membuat awan dari beberapa sphere
+                const numSpheres = 3 + Math.floor(Math.random() * 4);
+                for (let j = 0; j < numSpheres; j++) {
+                    const size = 2 + Math.random() * 3;
+                    const cloudPart = new THREE.Mesh(
+                        new THREE.SphereGeometry(size, 7, 7),
+                        cloudMaterial
+                    );
+                    
+                    cloudPart.position.set(
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 4
+                    );
+                    
+                    cloud.add(cloudPart);
+                }
+                
+                // Posisi awan di langit
+                cloud.position.set(
+                    Math.random() * MAP_SIZE - MAP_SIZE/2,
+                    15 + Math.random() * 10,
+                    Math.random() * MAP_SIZE - MAP_SIZE/2
+                );
+                
+                // Simpan kecepatan untuk animasi
+                cloud.userData = {
+                    speed: 0.1 + Math.random() * 0.2
+                };
+                
+                scene.add(cloud);
+                clouds.push(cloud);
+            }
+        }
+        
+        function createSky() {
+            // Membuat langit dengan sphere besar
+            const skyGeometry = new THREE.SphereGeometry(200, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x87CEEB,
+                side: THREE.BackSide
+            });
+            
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(sky);
+        }
+        
+        function setupTouchControls() {
+            // Kontrol kamera dengan sentuhan di area kanan layar
+            const cameraControl = document.getElementById('camera-control');
+            let cameraPointerId = null;
+            let lastTouchX = 0;
+            let lastTouchY = 0;
+            
+            cameraControl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (cameraPointerId !== null) return;
+                
+                const touch = e.touches[0];
+                cameraPointerId = touch.identifier;
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            });
+            
+            cameraControl.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (cameraPointerId === null) return;
+                
+                // Cari touch yang sesuai dengan cameraPointerId
+                let touch = null;
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === cameraPointerId) {
+                        touch = e.touches[i];
+                        break;
+                    }
+                }
+                if (!touch) return;
+                
+                const deltaX = (touch.clientX - lastTouchX) * 0.003 * cameraSensitivity;
+                const deltaY = (touch.clientY - lastTouchY) * 0.003 * cameraSensitivity;
+                
+                // Perbarui sudut kamera
+                cameraAngleX -= deltaY;
+                cameraAngleY -= deltaX;
+                
+                // Batasi rotasi vertikal untuk mencegah flip
+                cameraAngleX = Math.max(-Math.PI/2, Math.min(Math.PI/2, cameraAngleX));
+                
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            });
+            
+            cameraControl.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === cameraPointerId) {
+                        cameraPointerId = null;
+                        break;
+                    }
+                }
+            });
+            
+            cameraControl.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === cameraPointerId) {
+                        cameraPointerId = null;
+                        break;
+                    }
+                }
+            });
+            
+            // Tombol arah
+            const setupButton = (id, action) => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    action(true);
+                    playSound('click');
+                });
+                
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    action(false);
+                });
+                
+                btn.addEventListener('touchcancel', (e) => {
+                    e.preventDefault();
+                    action(false);
+                });
+            };
+            
+            setupButton('btn-forward', (state) => moveForward = state);
+            setupButton('btn-backward', (state) => moveBackward = state);
+            setupButton('btn-left', (state) => moveLeft = state);
+            setupButton('btn-right', (state) => moveRight = state);
+            
+            // Tombol aksi
+            document.getElementById('btn-plant').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (resources[selectedPlant + 'Seeds'] > 0) {
+                    setActiveTool('plant');
+                    showMessage("Penanam dipilih");
+                    playSound('click');
+                    interact();
+                } else {
+                    showMessage("Anda tidak memiliki benih " + selectedPlant + "!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('btn-water').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                setActiveTool('water');
+                showMessage("Penyiram dipilih");
+                playSound('click');
+                interact();
+            });
+            
+            document.getElementById('btn-harvest').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                setActiveTool('harvest');
+                showMessage("Alat panen dipilih");
+                playSound('click');
+                interact();
+            });
+            
+            document.getElementById('btn-locate').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                setActiveTool('locate');
+                showMessage("Mencari tanaman yang perlu perawatan");
+                playSound('click');
+                locatePlants();
+            });
+            
+            document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                playerVelocity.y = 5;
+                playSound('click');
+            });
+        }
+        
+        function setActiveTool(tool) {
+            activeTool = tool;
+            
+            // Hapus kelas active dari semua tombol
+            const buttons = document.querySelectorAll('.action-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Tambahkan kelas active ke tombol yang dipilih
+            document.getElementById(`btn-${tool}`).classList.add('active');
+        }
+        
+        function addDecorations() {
+            // Menambahkan beberapa pohon tinggi di sekitar perimeter
+            for (let i = 0; i < 20; i++) {
+                const angle = (i / 20) * Math.PI * 2;
+                const radius = MAP_SIZE/2 - 5;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                createTree(x, z);
+            }
+            
+            // Menambahkan beberapa batu
+            const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
+            const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x9e9e9e });
+            
+            for (let i = 0; i < 15; i++) {
+                const x = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                const z = Math.random() * (MAP_SIZE - 10) - (MAP_SIZE/2 - 5);
+                
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.set(x, 0.5, z);
+                rock.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                rock.castShadow = true;
+                rock.userData = { type: 'rock' };
+                
+                // Tambahkan collider untuk batu
+                rock.userData.collider = {
+                    type: 'sphere',
+                    position: new THREE.Vector3(x, 0.5, z),
+                    radius: 0.5
+                };
+                
+                scene.add(rock);
+                colliders.push(rock.userData.collider);
+            }
+        }
+        
+        function createTree(x, z) {
+            // Variasi tinggi pohon (2-3x lebih tinggi dari sebelumnya)
+            const treeHeight = 6 + Math.random() * 4; // Tinggi antara 6-10 unit
+            const trunkRadius = 0.4 + Math.random() * 0.3; // Variasi diameter batang
+            
+            // Batang pohon yang lebih tinggi
+            const treeTrunkGeometry = new THREE.CylinderGeometry(trunkRadius * 0.8, trunkRadius, treeHeight, 8);
+            const treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x5d4037 });
+            
+            const treeTrunk = new THREE.Mesh(treeTrunkGeometry, treeTrunkMaterial);
+            treeTrunk.position.set(x, treeHeight/2, z);
+            treeTrunk.castShadow = true;
+            treeTrunk.userData = { type: 'tree' };
+            
+            // Tambahkan collider untuk batang pohon
+            treeTrunk.userData.collider = {
+                type: 'cylinder',
+                position: new THREE.Vector3(x, treeHeight/2, z),
+                radius: trunkRadius,
+                height: treeHeight
+            };
+            
+            scene.add(treeTrunk);
+            colliders.push(treeTrunk.userData.collider);
+            
+            // Daun pohon yang lebih besar dan lebih realistis
+            const canopySize = 3 + Math.random() * 2;
+            const treeTopGeometry = new THREE.SphereGeometry(canopySize, 16, 16);
+            const treeTopMaterial = new THREE.MeshStandardMaterial({ 
+                color: new THREE.Color(0x2e7d32)
+            });
+            
+            const treeTop = new THREE.Mesh(treeTopGeometry, treeTopMaterial);
+            treeTop.position.set(x, treeHeight - canopySize/2, z);
+            treeTop.castShadow = true;
+            treeTop.userData = { type: 'tree' };
+            scene.add(treeTop);
+        }
+        
+        function setupUI() {
+            // Tombol toggle kamera
+            document.getElementById('camera-toggle').addEventListener('click', (e) => {
+                e.preventDefault();
+                cameraMode = cameraMode === 'fps' ? 'tps' : 'fps';
+                handModel.visible = cameraMode === 'fps';
+                playerModel.visible = cameraMode === 'tps';
+                showMessage(cameraMode === 'fps' ? "Mode Kamera: First Person" : "Mode Kamera: Third Person");
+                playSound('click');
+            });
+            
+            // Tombol toko
+            document.getElementById('shop-button').addEventListener('click', (e) => {
+                e.preventDefault();
+                playSound('click');
+                openShop();
+            });
+            
+            // Tomobol spin
+            document.getElementById('spin-button').addEventListener('click', (e) => {
+                e.preventDefault();
+                playSound('click');
+                openSpin();
+            });
+            
+            // Tombol mulai
+            document.getElementById('start-button').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('start-screen').style.display = 'none';
+                playSound('click');
+                if (!scene) {
+                    init();
+                }
+            });
+            
+            // Tombol coba lagi
+            document.getElementById('retry-button').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('error-message').style.display = 'none';
+                init();
+            });
+            
+            // Pilihan benih
+            document.querySelectorAll('.seed-item').forEach(item => {
+                item.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    // Hapus selected dari semua
+                    document.querySelectorAll('.seed-item').forEach(i => i.classList.remove('selected'));
+                    // Tambahkan ke yang diklik
+                    this.classList.add('selected');
+                    selectedPlant = this.getAttribute('data-plant');
+                    showMessage("Memilih benih " + selectedPlant);
+                    playSound('click');
+                });
+            });
+            
+            // Klik pada inventori
+            document.querySelectorAll('.inventory-item').forEach(item => {
+                item.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    const itemType = this.getAttribute('data-item');
+                    showMessage(`Anda memiliki ${resources[itemType]} ${itemType}`);
+                    playSound('click');
+                });
+            });
+        }
+        
+        function setupModals() {
+            // Modal toko
+            const shopModal = document.getElementById('shop-modal');
+            const closeShop = document.getElementById('close-shop');
+            const spinModal = document.getElementById('spin-modal');
+            const closeSpin = document.getElementById('close-spin');
+            
+            // Tab system untuk toko
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Hapus kelas active dari semua tab
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.style.display = 'none');
+                    
+                    // Tambahkan kelas active ke tab yang diklik
+                    btn.classList.add('active');
+                    
+                    // Tampilkan konten tab yang sesuai
+                    const tabId = btn.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).style.display = 'block';
+                    
+                    playSound('click');
+                });
+            });
+            
+            // Tombol tutup modal
+            closeShop.addEventListener('click', () => {
+                shopModal.style.display = 'none';
+                playSound('click');
+            });
+            
+            closeSpin.addEventListener('click', () => {
+                spinModal.style.display = 'none';
+                playSound('click');
+            });
+            
+            // Klik di luar modal untuk menutup
+            window.addEventListener('click', (e) => {
+                if (e.target === shopModal) {
+                    shopModal.style.display = 'none';
+                    playSound('click');
+                }
+                if (e.target === spinModal) {
+                    spinModal.style.display = 'none';
+                    playSound('click');
+                }
+            });
+            
+            // Fungsi beli dan jual
+            document.getElementById('buy-wheat-seeds').addEventListener('click', () => {
+                if (resources.money >= 10) {
+                    resources.money -= 10;
+                    resources.wheatSeeds += 5;
+                    updateStatsPanel();
+                    showMessage("Membeli 5 benih gandum seharga 10 uang");
+                    playSound('coin');
+                } else {
+                    showMessage("Uang tidak cukup!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('buy-corn-seeds').addEventListener('click', () => {
+                if (resources.money >= 15) {
+                    resources.money -= 15;
+                    resources.cornSeeds += 5;
+                    updateStatsPanel();
+                    showMessage("Membeli 5 benih jagung seharga 15 uang");
+                    playSound('coin');
+                } else {
+                    showMessage("Uang tidak cukup!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('buy-carrot-seeds').addEventListener('click', () => {
+                if (resources.money >= 20) {
+                    resources.money -= 20;
+                    resources.carrotSeeds += 5;
+                    updateStatsPanel();
+                    showMessage("Membeli 5 benih wortel seharga 20 uang");
+                    playSound('coin');
+                } else {
+                    showMessage("Uang tidak cukup!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('buy-diamonds').addEventListener('click', () => {
+                if (resources.money >= 100) {
+                    resources.money -= 100;
+                    resources.diamonds += 5;
+                    updateStatsPanel();
+                    showMessage("Membeli 5 diamond seharga 100 uang");
+                    playSound('coin');
+                } else {
+                    showMessage("Uang tidak cukup!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('sell-wheat').addEventListener('click', () => {
+                if (resources.wheat > 0) {
+                    const amount = Math.min(5, resources.wheat);
+                    resources.wheat -= amount;
+                    resources.money += amount * 5;
+                    updateStatsPanel();
+                    showMessage(`Menjual ${amount} gandum seharga ${amount * 5} uang`);
+                    playSound('coin');
+                } else {
+                    showMessage("Tidak ada gandum untuk dijual!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('sell-corn').addEventListener('click', () => {
+                if (resources.corn > 0) {
+                    const amount = Math.min(5, resources.corn);
+                    resources.corn -= amount;
+                    resources.money += amount * 8;
+                    updateStatsPanel();
+                    showMessage(`Menjual ${amount} jagung seharga ${amount * 8} uang`);
+                    playSound('coin');
+                } else {
+                    showMessage("Tidak ada jagung untuk dijual!");
+                    playSound('error');
+                }
+            });
+            
+            document.getElementById('sell-carrot').addEventListener('click', () => {
+                if (resources.carrot > 0) {
+                    const amount = Math.min(5, resources.carrot);
+                    resources.carrot -= amount;
+                    resources.money += amount * 12;
+                    updateStatsPanel();
+                    showMessage(`Menjual ${amount} wortel seharga ${amount * 12} uang`);
+                    playSound('coin');
+                } else {
+                    showMessage("Tidak ada wortel untuk dijual!");
+                    playSound('error');
+                }
+            });
+            
+            // Fungsi spin
+            document.getElementById('do-spin').addEventListener('click', () => {
+                if (resources.diamonds >= 1) {
+                    resources.diamonds -= 1;
+                    updateStatsPanel();
+                    
+                    const spinWheel = document.getElementById('spin-wheel');
+                    const spinResult = document.getElementById('spin-result');
+                    
+                    // Putar roda
+                    const spinDegrees = 1800 + Math.floor(Math.random() * 360);
+                    spinWheel.style.transform = `rotate(${spinDegrees}deg)`;
+                    
+                    // Mainkan suara spin
+                    playSound('spin');
+                    
+                    // Tentukan hadiah berdasarkan posisi akhir
+                    setTimeout(() => {
+                        const prizes = [
+                            { name: "10 Benih Gandum", action: () => { resources.wheatSeeds += 10; } },
+                            { name: "15 Benih Jagung", action: () => { resources.cornSeeds += 15; } },
+                            { name: "20 Benih Wortel", action: () => { resources.carrotSeeds += 20; } },
+                            { name: "50 Uang", action: () => { resources.money += 50; } },
+                            { name: "3 Diamond", action: () => { resources.diamonds += 3; } }
+                        ];
+                        
+                        const prizeIndex = Math.floor((spinDegrees % 360) / 72);
+                        const prize = prizes[prizeIndex];
+                        
+                        prize.action();
+                        spinResult.textContent = `Selamat! Anda mendapatkan: ${prize.name}`;
+                        updateStatsPanel();
+                        
+                        // Mainkan suara kemenangan
+                        playSound('win');
+                    }, 3000);
+                } else {
+                    showMessage("Diamond tidak cukup untuk spin! Butuh 1 diamond.");
+                    playSound('error');
+                }
+            });
+        }
+        
+        function openShop() {
+            const shopModal = document.getElementById('shop-modal');
+            shopModal.style.display = 'flex';
+        }
+        
+        function openSpin() {
+            const spinModal = document.getElementById('spin-modal');
+            const spinResult = document.getElementById('spin-result');
+            const spinWheel = document.getElementById('spin-wheel');
+            
+            spinResult.textContent = '';
+            spinWheel.style.transform = 'rotate(0deg)';
+            spinModal.style.display = 'flex';
+        }
+        
+        function updateStatsPanel() {
+            document.getElementById('money').textContent = resources.money;
+            document.getElementById('diamonds').textContent = resources.diamonds;
+            
+            // Update inventori
+            document.getElementById('inventory-wheat').textContent = resources.wheat;
+            document.getElementById('inventory-corn').textContent = resources.corn;
+            document.getElementById('inventory-carrot').textContent = resources.carrot;
+            
+            // Update panel bibit
+            document.getElementById('seed-wheat').textContent = resources.wheatSeeds;
+            document.getElementById('seed-corn').textContent = resources.cornSeeds;
+            document.getElementById('seed-carrot').textContent = resources.carrotSeeds;
+        }
+        
+        function interact() {
+            // Sistem interaksi dengan plot terdekat
+            let nearestPlot = null;
+            let minDistance = Infinity;
+            
+            for (const plot of farmlands) {
+                const distance = playerCollider.position.distanceTo(plot.position);
+                if (distance < minDistance && distance < 3) {
+                    minDistance = distance;
+                    nearestPlot = plot;
+                }
+            }
+            
+            if (nearestPlot) {
+                switch(activeTool) {
+                    case 'plant':
+                        if (nearestPlot.userData.state === 'ready' && resources[selectedPlant + 'Seeds'] > 0) {
+                            nearestPlot.userData.state = 'planted';
+                            nearestPlot.userData.growth = 0;
+                            nearestPlot.userData.waterLevel = 100;
+                            nearestPlot.userData.plantType = selectedPlant;
+                            nearestPlot.userData.lastWatered = Date.now();
+                            resources[selectedPlant + 'Seeds']--;
+                            
+                            updateStatsPanel();
+                            
+                            // Buat model tanaman
+                            nearestPlot.userData.plantModel = createPlantModel(selectedPlant, 'seedling');
+                            nearestPlot.userData.plantModel.position.copy(nearestPlot.position);
+                            scene.add(nearestPlot.userData.plantModel);
+                            
+                            showMessage('Benih ' + selectedPlant + ' ditanam! Sirami untuk membantu tumbuh.');
+                            
+                            // Feedback visual dan suara
+                            flashElement(document.getElementById('btn-plant'));
+                            playSound('plant');
+                        }
+                        break;
+                    case 'water':
+                        if (nearestPlot.userData.state === 'planted' || nearestPlot.userData.state === 'growing') {
+                            nearestPlot.userData.waterLevel = Math.min(nearestPlot.userData.maxWaterLevel, nearestPlot.userData.waterLevel + 30);
+                            nearestPlot.userData.lastWatered = Date.now();
+                            showMessage('Tanaman disiram! (' + Math.round(nearestPlot.userData.waterLevel) + '% air)');
+                            
+                            // Feedback visual dan suara
+                            flashElement(document.getElementById('btn-water'));
+                            playSound('water');
+                        }
+                        break;
+                    case 'harvest':
+                        if (nearestPlot.userData.state === 'grown') {
+                            // Kembalikan ke keadaan siap tanam
+                            const harvestedType = nearestPlot.userData.plantType;
+                            nearestPlot.userData.state = 'ready';
+                            nearestPlot.userData.plantType = null;
+                            nearestPlot.userData.growth = 0;
+                            
+                            // Hapus model tanaman
+                            if (nearestPlot.userData.plantModel) {
+                                scene.remove(nearestPlot.userData.plantModel);
+                                nearestPlot.userData.plantModel = null;
+                            }
+                            
+                            // Tambahkan hasil panen
+                            if (harvestedType === 'wheat') {
+                                resources.wheat += 3;
+                                resources.money += 15;
+                            } else if (harvestedType === 'corn') {
+                                resources.corn += 2;
+                                resources.money += 16;
+                            } else if (harvestedType === 'carrot') {
+                                resources.carrot += 4;
+                                resources.money += 20;
+                            }
+                            
+                            updateStatsPanel();
+                            showMessage('Dipanen! +' + (harvestedType === 'wheat' ? '3 gandum, +15 uang' : 
+                                harvestedType === 'corn' ? '2 jagung, +16 uang' : '4 wortel, +20 uang'));
+                            
+                            // Feedback visual dan suara
+                            flashElement(document.getElementById('btn-harvest'));
+                            playSound('harvest');
+                            playSound('coin');
+                        } else if (nearestPlot.userData.state === 'dead') {
+                            // Bersihkan tanaman mati
+                            nearestPlot.userData.state = 'ready';
+                            
+                            if (nearestPlot.userData.plantModel) {
+                                scene.remove(nearestPlot.userData.plantModel);
+                                nearestPlot.userData.plantModel = null;
+                            }
+                            
+                            showMessage('Tanaman mati dibersihkan. Siap untuk ditanam lagi.');
+                            playSound('click');
+                        }
+                        break;
+                }
+            }
+        }
+        
+        function locatePlants() {
+            // Mencari tanaman yang perlu disiram atau sudah siap panen
+            let needsWater = [];
+            let readyToHarvest = [];
+            
+            for (const plot of farmlands) {
+                const distance = playerCollider.position.distanceTo(plot.position);
+                if (distance < 20) { // Hanya periksa tanaman dalam jarak 20 unit
+                    if (plot.userData.state === 'planted' || plot.userData.state === 'growing') {
+                        // Periksa apakah tanaman perlu disiram (air di bawah 30%)
+                        if (plot.userData.waterLevel < 30) {
+                            needsWater.push(plot);
+                        }
+                    } else if (plot.userData.state === 'grown') {
+                        readyToHarvest.push(plot);
+                    }
+                }
+            }
+            
+            if (readyToHarvest.length > 0) {
+                // Prioritaskan tanaman yang siap panen
+                const nearestHarvest = readyToHarvest.reduce((nearest, plot) => {
+                    const distance = playerCollider.position.distanceTo(plot.position);
+                    return distance < nearest.distance ? {plot, distance} : nearest;
+                }, {plot: null, distance: Infinity});
+                
+                if (nearestHarvest.plot) {
+                    // Arahkan kamera ke tanaman yang siap panen
+                    const direction = new THREE.Vector3();
+                    direction.subVectors(nearestHarvest.plot.position, playerCollider.position).normalize();
+                    cameraAngleY = Math.atan2(direction.x, direction.z);
+                    
+                    showMessage("Ada tanaman siap panen di dekat Anda!");
+                    playSound('click');
+                    return;
+                }
+            }
+            
+            if (needsWater.length > 0) {
+                // Cari tanaman yang paling perlu disiram
+                const mostThirsty = needsWater.reduce((most, plot) => {
+                    return plot.userData.waterLevel < most.userData.waterLevel ? plot : most;
+                }, needsWater[0]);
+                
+                if (mostThirsty) {
+                    // Arahkan kamera ke tanaman yang perlu disiram
+                    const direction = new THREE.Vector3();
+                    direction.subVectors(mostThirsty.position, playerCollider.position).normalize();
+                    cameraAngleY = Math.atan2(direction.x, direction.z);
+                    
+                    showMessage("Ada tanaman yang perlu disiram di dekat Anda!");
+                    playSound('click');
+                    return;
+                }
+            }
+            
+            showMessage("Tidak ada tanaman yang perlu perawatan di dekat Anda.");
+            playSound('error');
+        }
+        
+        function flashElement(element) {
+            element.classList.add('active');
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 300);
+        }
+        
+        function showMessage(text) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.style.opacity = 1;
+            
+            setTimeout(() => {
+                message.style.opacity = 0;
+            }, 2000);
+        }
+        
+        function showMapBorderWarning() {
+            const warning = document.getElementById('map-border-warning');
+            warning.style.opacity = 1;
+            
+            setTimeout(() => {
+                warning.style.opacity = 0;
+            }, 2000);
+        }
+        
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Fungsi deteksi tabrakan
+        function checkCollisions(newPosition) {
+            const playerMin = new THREE.Vector3(
+                newPosition.x - playerCollider.radius,
+                newPosition.y,
+                newPosition.z - playerCollider.radius
+            );
+            
+            const playerMax = new THREE.Vector3(
+                newPosition.x + playerCollider.radius,
+                newPosition.y + playerCollider.height,
+                newPosition.z + playerCollider.radius
+            );
+            
+            for (const collider of colliders) {
+                if (collider.type === 'box') {
+                    if (playerMin.x < collider.max.x && playerMax.x > collider.min.x &&
+                        playerMin.y < collider.max.y && playerMax.y > collider.min.y &&
+                        playerMin.z < collider.max.z && playerMax.z > collider.min.z) {
+                        return true; // Tabrakan terdeteksi
+                    }
+                } else if (collider.type === 'sphere') {
+                    const dx = newPosition.x - collider.position.x;
+                    const dy = (newPosition.y + playerCollider.height/2) - collider.position.y;
+                    const dz = newPosition.z - collider.position.z;
+                    const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (distance < playerCollider.radius + collider.radius) {
+                        return true; // Tabrakan terdeteksi
+                    }
+                } else if (collider.type === 'cylinder') {
+                    const dx = newPosition.x - collider.position.x;
+                    const dz = newPosition.z - collider.position.z;
+                    const horizontalDistance = Math.sqrt(dx*dx + dz*dz);
+                    
+                    if (horizontalDistance < playerCollider.radius + collider.radius &&
+                        newPosition.y < collider.position.y + collider.height/2 &&
+                        newPosition.y + playerCollider.height > collider.position.y - collider.height/2) {
+                        return true; // Tabrakan terdeteksi
+                    }
+                } else if (collider.type === 'plane') {
+                    if (newPosition.y < 0.1) {
+                        newPosition.y = 0.1;
+                        playerVelocity.y = 0;
+                        return true;
+                    }
+                }
+            }
+            
+            return false; // Tidak ada tabrakan
+        }
+        
+        function animate() {
+            if (!scene || !camera) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const currentTime = Date.now();
+            
+            // Animasikan awan
+            animateClouds(delta);
+            
+            // Update pertumbuhan tanaman
+            updatePlantsGrowth(delta);
+            
+            // Menangani pergerakan pemain
+            const baseSpeed = 5 * delta;
+            const runMultiplier = isRunning ? 1.5 : 1;
+            const speed = baseSpeed * runMultiplier;
+            
+            // Reset velocity horizontal
+            playerVelocity.x = 0;
+            playerVelocity.z = 0;
+            
+            // Hitung arah pergerakan berdasarkan rotasi kamera
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
+            
+            const right = new THREE.Vector3();
+            right.crossVectors(new THREE.Vector3(0, 1, 0), direction).normalize();
+            
+            // Terapkan input pergerakan
+            if (moveForward) {
+                playerVelocity.x += direction.x * speed;
+                playerVelocity.z += direction.z * speed;
+            }
+            if (moveBackward) {
+                playerVelocity.x -= direction.x * speed;
+                playerVelocity.z -= direction.z * speed;
+            }
+            if (moveLeft) {
+                playerVelocity.x -= right.x * speed;
+                playerVelocity.z -= right.z * speed;
+            }
+            if (moveRight) {
+                playerVelocity.x += right.x * speed;
+                playerVelocity.z += right.z * speed;
+            }
+            
+            // Mainkan suara langkah kaki
+            if ((moveForward || moveBackward || moveLeft || moveRight) && currentTime - lastStepTime > stepInterval / runMultiplier) {
+                if (isRunning) {
+                    playSound('run');
+                } else {
+                    playSound('walk');
+                }
+                lastStepTime = currentTime;
+            }
+            
+            // Terapkan gravitasi
+            playerVelocity.y -= 9.8 * delta;
+            
+            // Hitung posisi baru
+            const newPosition = playerCollider.position.clone();
+            newPosition.x += playerVelocity.x;
+            newPosition.z += playerVelocity.z;
+            newPosition.y += playerVelocity.y * delta;
+            
+            // Periksa tabrakan dengan tanah
+            if (newPosition.y < 1.0) {
+                newPosition.y = 1.0;
+                playerVelocity.y = 0;
+            }
+            
+            // Periksa tabrakan dengan objek lain
+            if (!checkCollisions(newPosition)) {
+                playerCollider.position.copy(newPosition);
+            }
+            
+            // Periksa batas map
+            if (Math.abs(playerCollider.position.x) > MAP_BORDER || 
+                Math.abs(playerCollider.position.z) > MAP_BORDER) {
+                // Kembalikan pemain ke dalam batas
+                playerCollider.position.x = THREE.MathUtils.clamp(playerCollider.position.x, -MAP_BORDER, MAP_BORDER);
+                playerCollider.position.z = THREE.MathUtils.clamp(playerCollider.position.z, -MAP_BORDER, MAP_BORDER);
+                
+                // Tampilkan peringatan
+                showMapBorderWarning();
+            }
+            
+            // Update posisi model pemain
+            playerModel.position.copy(playerCollider.position);
+            
+            // Update rotasi model pemain berdasarkan arah kamera
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                playerModel.rotation.y = cameraAngleY;
+            }
+            
+            // Update posisi dan rotasi kamera berdasarkan mode
+            if (cameraMode === 'fps') {
+                // First-person view - kamera di kepala karakter
+                camera.position.copy(playerCollider.position);
+                camera.position.y += 1.6; // Tinggi mata yang lebih rendah
+                camera.rotation.set(cameraAngleX, cameraAngleY, 0, 'YXZ');
+            } else {
+                // Third-person view - kamera di belakang karakter
+                const cameraPos = new THREE.Vector3();
+                cameraPos.copy(playerCollider.position);
+                
+                // Hitung offset kamera berdasarkan rotasi pemain
+                const offset = tpsCameraOffset.clone();
+                const cos = Math.cos(cameraAngleY);
+                const sin = Math.sin(cameraAngleY);
+                
+                offset.x = offset.z * sin;
+                offset.z = offset.z * cos;
+                
+                cameraPos.add(offset);
+                cameraPos.y += 1.5; // Tinggi kamera
+                
+                camera.position.copy(cameraPos);
+                
+                // Kamera melihat ke arah pemain
+                camera.lookAt(playerCollider.position.x, playerCollider.position.y + 1, playerCollider.position.z);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function updatePlantsGrowth(delta) {
+            // Update pertumbuhan semua tanaman
+            for (const plot of farmlands) {
+                if (plot.userData.state === 'planted' || plot.userData.state === 'growing') {
+                    updatePlantGrowth(plot, delta);
+                }
+            }
+        }
+        
+        function animateClouds(delta) {
+            // Animasikan pergerakan awan
+            for (const cloud of clouds) {
+                cloud.position.x -= cloud.userData.speed * delta;
+                
+                // Jika awan keluar dari batas, pindahkan ke sisi lain
+                if (cloud.position.x < -MAP_SIZE/2 - 10) {
+                    cloud.position.x = MAP_SIZE/2 + 10;
+                    cloud.position.z = Math.random() * MAP_SIZE - MAP_SIZE/2;
+                }
+            }
+        }
+        
+        // Setup event listener untuk tombol mulai
+        document.getElementById('start-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('start-screen').style.display = 'none';
+            // Inisialisasi game setelah tombol diklik
+            init();
+        });
+    </script>
+</body>
+</html>
